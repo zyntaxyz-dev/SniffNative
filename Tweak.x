@@ -12,6 +12,7 @@
 
 static NSFileHandle *gLog = nil;
 static unsigned long gCount = 0;
+static void SNAuditAnogs(void); // v2: definida abajo, se llama en %ctor
 
 static void SNLog(NSString *fmt, ...) {
     if (!gLog) return;
