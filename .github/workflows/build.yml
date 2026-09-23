@@ -1,0 +1,42 @@
+# Compila el tweak con theos en runner macOS y publica el .deb como artifact.
+# Del .deb se extrae el .dylib para inyectar con ESign (ver README.md).
+name: build
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    env:
+      THEOS: ${{ github.workspace }}/theos
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar theos
+        run: |
+          brew install ldid xz
+          git clone --recursive https://github.com/theos/theos.git "$THEOS"
+          echo "theos commit: $(cd "$THEOS" && git rev-parse --short HEAD)"
+
+      - name: Compilar tweak
+        run: make package FINALPACKAGE=1
+
+      - name: Extraer .dylib del .deb
+        run: |
+          DEB=$(ls packages/*.deb | head -n1)
+          echo "DEB=$DEB"
+          mkdir -p artifact
+          cp "$DEB" artifact/
+          cd artifact && ar x "$(basename "$DEB")"
+          tar -xf data.tar.* 2>/dev/null || tar -xf data.tar
+          find . -name "*.dylib"
+
+      - name: Subir artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SniffNative-dylib
+          path: artifact/
+          retention-days: 30

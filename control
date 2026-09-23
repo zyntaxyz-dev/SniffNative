@@ -1,0 +1,8 @@
+Package: com.mod.sniffnative
+Name: SniffNative
+Version: 1.0
+Architecture: iphoneos-arm64
+Description: Observador nativo (endpoints HTTP, HWID, entorno, clases anogs). Solo log, sin bypass.
+Maintainer: mod
+Author: mod
+Section: Tweaks
