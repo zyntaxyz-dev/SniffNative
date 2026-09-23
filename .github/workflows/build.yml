@@ -28,15 +28,25 @@ jobs:
         run: |
           DEB=$(ls packages/*.deb | head -n1)
           echo "DEB=$DEB"
-          mkdir -p artifact
+          mkdir -p artifact work
           cp "$DEB" artifact/
-          cd artifact && ar x "$(basename "$DEB")"
+          cd work && ar x "../$DEB"
           tar -xf data.tar.* 2>/dev/null || tar -xf data.tar
-          find . -name "*.dylib"
+          DYLIB=$(find . -name "*.dylib" | head -n1)
+          echo "DYLIB=$DYLIB"
+          cp "$DYLIB" ../artifact/SniffNative.dylib
+          ls -la ../artifact/
 
-      - name: Subir artifact
+      - name: Subir .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: SniffNative-deb
+          path: artifact/*.deb
+          retention-days: 30
+
+      - name: Subir .dylib limpio
         uses: actions/upload-artifact@v4
         with:
           name: SniffNative-dylib
-          path: artifact/
+          path: artifact/SniffNative.dylib
           retention-days: 30
