@@ -75,6 +75,7 @@ static void SNLog(NSString *fmt, ...) {
         }
         free(cls);
         SNLog(@"CLASSES seguridad=%u de %d", found, nc);
+        SNAuditAnogs(); // v2: auditoria de clases anogs (nombres exactos)
     }
 }
 
@@ -98,7 +99,60 @@ static void SNLog(NSString *fmt, ...) {
 }
 %end
 
-// ---------- Fuentes de HWID (lo que el juego puede leer para atarte) -------
+// ---------- v2: AppAttest de Apple (API publica, firmas conocidas) --------
+// anogs usa atestacion de dispositivo (visto en binario: attestKey,
+// generateAssertion). Loguear CUANDO atesta = saber cuando el servidor
+// pide prueba de dispositivo limpio.
+%hook DCAppAttestService
+- (void)attestKey:(NSString *)keyId clientDataHash:(NSData *)hash completionHandler:(void (^)(NSData *, NSError *))h {
+    SNLog(@"ATTEST attestKey id=%@ hashLen=%lu", keyId, (unsigned long)hash.length);
+    %orig;
+}
+- (void)generateAssertion:(NSString *)keyId clientDataHash:(NSData *)hash completionHandler:(void (^)(NSData *, NSError *))h {
+    SNLog(@"ATTEST assertion id=%@ hashLen=%lu", keyId, (unsigned long)hash.length);
+    %orig;
+}
+- (void)generateKeyWithCompletionHandler:(void (^)(NSString *, NSError *))h {
+    SNLog(@"ATTEST generateKey");
+    %orig;
+}
+%end
+
+// ---------- v2: dialogos de baneo/castigo (firma UIViewController segura) --
+%hook UIViewController
+- (void)presentViewController:(UIViewController *)vc animated:(BOOL)a completion:(void (^)(void))h {
+    @try {
+        NSString *cn = NSStringFromClass([vc class]) ?: @"<nil>";
+        NSString *low = [cn lowercaseString];
+        if ([low containsString:@"alert"] || [low containsString:@"ban"] ||
+            [low containsString:@"punish"] || [low containsString:@"anogs"] ||
+            [low containsString:@"acemsg"] || [low containsString:@"aces"] ||
+            [low containsString:@"screenshot"] || [low containsString:@"tss"] ||
+            [low containsString:@"msgbox"]) {
+            SNLog(@"DIALOG present %@", cn);
+        }
+    } @catch (NSException *e) {}
+    %orig;
+}
+%end
+
+// ---------- v2: auditoria runtime de clases anogs (solo nombres, cero riesgo)
+static void SNAuditAnogs(void) {
+    NSArray *targets = @[@"AceMsgBoxImp", @"AceUIAlertViewController", @"ScreenShot",
+        @"TssIosMainThreadDispatcher", @"TssReachability", @"PluginTssSDKLifecycle",
+        @"CloudAppLifecycleObserver", @"UIAlertViewDelegate"];
+    for (NSString *name in targets) {
+        Class c = objc_getClass([name UTF8String]);
+        if (!c) { SNLog(@"AUDIT %@ MISSING", name); continue; }
+        unsigned mc = 0;
+        Method *ml = class_copyMethodList(c, &mc);
+        NSMutableArray *names = [NSMutableArray array];
+        for (unsigned i = 0; i < mc && i < 40; i++)
+            [names addObject:NSStringFromSelector(method_getName(ml[i]))];
+        if (ml) free(ml);
+        SNLog(@"AUDIT %@ +%u [%@]", name, mc, [names componentsJoinedByString:@","]);
+    }
+}
 %hook UIDevice
 - (NSString *)identifierForVendor {
     NSString *v = %orig;
