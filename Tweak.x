@@ -35,7 +35,7 @@ static void SNLog(NSString *fmt, ...) {
         [[NSFileManager defaultManager] createFileAtPath:logPath contents:nil attributes:nil];
         gLog = [NSFileHandle fileHandleForWritingAtPath:logPath];
         [gLog seekToEndOfFile];
-        SNLog(@"START tweak v1 %@ %@", [[UIDevice currentDevice] systemVersion], [[NSBundle mainBundle] bundleIdentifier]);
+        SNLog(@"START tweak v3 %@ %@", [[UIDevice currentDevice] systemVersion], [[NSBundle mainBundle] bundleIdentifier]);
 
         // 1. Imagenes Mach-O cargadas (buscar anogs / TSS / tencent).
         uint32_t n = _dyld_image_count();
@@ -62,11 +62,16 @@ static void SNLog(NSString *fmt, ...) {
             if (!cn) continue;
             NSString *s = [NSString stringWithUTF8String:cn];
             NSString *low = [s lowercaseString];
+            // v3: + ace (nombre del anticheat), ano, tdata/tdatamaster,
+            // crashsight (canal de excepciones), comm (archivos ano_tmp).
             if ([low containsString:@"anogs"] || [low containsString:@"tss"] ||
                 [low containsString:@"tencent"] || [low containsString:@"anticheat"] ||
                 [low containsString:@"hawk"] || [low containsString:@"mrpcs"] ||
                 [low containsString:@"tersafe"] || [low containsString:@"bugly"] ||
-                [low containsString:@"wetest"] || [low containsString:@"aceanti"]) {
+                [low containsString:@"wetest"] || [low containsString:@"aceanti"] ||
+                [low containsString:@"ace"] || [low containsString:@"ano"] ||
+                [low containsString:@"tdata"] || [low containsString:@"tdatamaster"] ||
+                [low containsString:@"crashsight"] || [low containsString:@"comm"]) {
                 unsigned mc = 0;
                 Method *ml = class_copyMethodList(object_getClass(cls[i]), &mc);
                 SNLog(@"CLASS %@ (+%u metodos clase)", s, mc);
@@ -87,12 +92,17 @@ static void SNLog(NSString *fmt, ...) {
     @try {
         NSString *url = request.URL.absoluteString ?: @"<nil>";
         NSString *low = [url lowercaseString];
+        // v3: + ace/ano/tdata/crashsight/comm (anticheat, proteccion,
+        // telemetria Tencent, excepciones, archivos ano_tmp).
         if ([low containsString:@"tencent"] || [low containsString:@"wetest"] ||
             [low containsString:@"bugly"] || [low containsString:@"qcloud"] ||
             [low containsString:@"qq.com"] || [low containsString:@"keyauth"] ||
             [low containsString:@"report"] || [low containsString:@"tss"] ||
             [low containsString:@"anti"] || [low containsString:@"cheat"] ||
-            [low containsString:@"ban"] || [low containsString:@"log"]) {
+            [low containsString:@"ban"] || [low containsString:@"log"] ||
+            [low containsString:@"ace"] || [low containsString:@"ano"] ||
+            [low containsString:@"tdata"] || [low containsString:@"tdatamaster"] ||
+            [low containsString:@"crashsight"] || [low containsString:@"comm"]) {
             SNLog(@"HTTP %@ %@", request.HTTPMethod ?: @"?", url);
         }
     } @catch (NSException *e) {}
@@ -128,8 +138,8 @@ static void SNLog(NSString *fmt, ...) {
         if ([low containsString:@"alert"] || [low containsString:@"ban"] ||
             [low containsString:@"punish"] || [low containsString:@"anogs"] ||
             [low containsString:@"acemsg"] || [low containsString:@"aces"] ||
-            [low containsString:@"screenshot"] || [low containsString:@"tss"] ||
-            [low containsString:@"msgbox"]) {
+            [low containsString:@"ace"] || [low containsString:@"screenshot"] ||
+            [low containsString:@"tss"] || [low containsString:@"msgbox"]) {
             SNLog(@"DIALOG present %@", cn);
         }
     } @catch (NSException *e) {}
@@ -176,11 +186,15 @@ static void SNAuditAnogs(void) {
     BOOL r = %orig;
     @try {
         NSString *low = [path lowercaseString];
+        // v3: + ano_tmp/ano (dir de proteccion, antes invisible: "ano_tmp"
+        // no contiene "anogs"), crashsight, comm (nombres en ano_tmp), tdata.
         if ([low containsString:@"cydia"] || [low containsString:@"substrate"] ||
             [low containsString:@"jailbreak"] || [low containsString:@"mobilesubstrate"] ||
             [low containsString:@"esign"] || [low containsString:@"sileo"] ||
             [low containsString:@"zebra"] || [low containsString:@"anogs"] ||
-            [low containsString:@"tss"]) {
+            [low containsString:@"ano_tmp"] || [low containsString:@"ano"] ||
+            [low containsString:@"crashsight"] || [low containsString:@"comm"] ||
+            [low containsString:@"tdata"] || [low containsString:@"tss"]) {
             SNLog(@"ENV fileExists %@ -> %d", path, r);
         }
     } @catch (NSException *e) {}
